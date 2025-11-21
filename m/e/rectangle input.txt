@@ -1,0 +1,164 @@
+#include <GL/glut.h>
+#include <math.h>
+#include <iostream>
+using namespace std;
+
+// Rectangle points from user
+float X1, Y1;
+float X2, Y2;
+float X3, Y3;
+float X4, Y4;
+
+void drawRectangle(float a1, float b1, float a2, float b2, float a3, float b3, float a4, float b4)
+{
+    glLineWidth(2.0);
+    glBegin(GL_LINE_LOOP);
+        glVertex2f(a1, b1);
+        glVertex2f(a2, b2);
+        glVertex2f(a3, b3);
+        glVertex2f(a4, b4);
+    glEnd();
+}
+
+void display()
+{
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColor3f(0, 0, 0);
+
+    // Draw original user rectangle
+    drawRectangle(X1, Y1, X2, Y2, X3, Y3, X4, Y4);
+
+    glFlush();
+}
+
+void keyboard(unsigned char key, int x, int y)
+{
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Draw original first
+    glColor3f(0, 0, 0);
+    drawRectangle(X1, Y1, X2, Y2, X3, Y3, X4, Y4);
+
+    switch (key)
+    {
+        // TRANSLATION
+        case 't':
+        {
+            glColor3f(1, 0, 0);
+            float tx = 50, ty = 20;
+            drawRectangle(
+                X1+tx, Y1+ty,
+                X2+tx, Y2+ty,
+                X3+tx, Y3+ty,
+                X4+tx, Y4+ty
+            );
+            break;
+        }
+
+        // SCALING
+        case 's':
+        {
+            glColor3f(1, 0, 0);
+            float sx = 1.3, sy = 1.4;
+            drawRectangle(
+                X1*sx, Y1*sy,
+                X2*sx, Y2*sy,
+                X3*sx, Y3*sy,
+                X4*sx, Y4*sy
+            );
+            break;
+        }
+
+        // ROTATION (30°)
+        case 'r':
+        {
+            glColor3f(1,0,0);
+            float angle = 30 * 3.1416 / 180;
+
+            drawRectangle(
+                X1*cos(angle) - Y1*sin(angle), X1*sin(angle) + Y1*cos(angle),
+                X2*cos(angle) - Y2*sin(angle), X2*sin(angle) + Y2*cos(angle),
+                X3*cos(angle) - Y3*sin(angle), X3*sin(angle) + Y3*cos(angle),
+                X4*cos(angle) - Y4*sin(angle), X4*sin(angle) + Y4*cos(angle)
+            );
+            break;
+        }
+
+        // REFLECTION (X-axis & Y-axis)
+        case 'f':
+        {
+            glColor3f(1,0,0);
+
+            // X-axis reflection
+            drawRectangle(
+                X1, -Y1, X2, -Y2, X3, -Y3, X4, -Y4
+            );
+
+            // Y-axis reflection
+            drawRectangle(
+                -X1, Y1, -X2, Y2, -X3, Y3, -X4, Y4
+            );
+            break;
+        }
+
+        // SHEARING
+        case 'h':
+        {
+            glColor3f(1,0,0);
+            float sh = 0.5;
+
+            // X-shear
+            drawRectangle(
+                X1 + sh*Y1, Y1,
+                X2 + sh*Y2, Y2,
+                X3 + sh*Y3, Y3,
+                X4 + sh*Y4, Y4
+            );
+
+            // Y-shear
+            drawRectangle(
+                X1, Y1 + sh*X1,
+                X2, Y2 + sh*X2,
+                X3, Y3 + sh*X3,
+                X4, Y4 + sh*X4
+            );
+            break;
+        }
+    }
+
+    glFlush();
+}
+
+void init()
+{
+    glClearColor(1, 1, 1, 1);
+    gluOrtho2D(-200, 200, -200, 200);
+}
+
+int main(int argc, char** argv)
+{
+    // USER INPUT SECTION
+    cout << "Enter x1 y1: ";
+    cin >> X1 >> Y1;
+
+    cout << "Enter x2 y2: ";
+    cin >> X2 >> Y2;
+
+    cout << "Enter x3 y3: ";
+    cin >> X3 >> Y3;
+
+    cout << "Enter x4 y4: ";
+    cin >> X4 >> Y4;
+
+    // GLUT setup
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    glutInitWindowSize(500, 500);
+    glutCreateWindow("2D Transformations - User Input Rectangle");
+
+    init();
+    glutDisplayFunc(display);
+    glutKeyboardFunc(keyboard);
+
+    glutMainLoop();
+}
