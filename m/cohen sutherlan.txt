@@ -1,0 +1,216 @@
+// cohen_sutherland.cpp
+// Cohen-Sutherland line clipping example using GLUT
+//
+// Compile on Linux:
+// g++ cohen_sutherland.cpp -o cohen_sutherland -lGL -lGLU -lglut
+//
+// Or on some systems:
+// g++ cohen_sutherland.cpp -o cohen_sutherland -framework OpenGL -framework GLUT
+//
+// Run:
+// ./cohen_sutherland
+
+#include <GL/glut.h>
+#include <vector>
+#include <iostream>
+
+// Clipping rectangle boundaries
+double xmin = 100.0, ymin = 100.0, xmax = 300.0, ymax = 250.0;
+
+// Outcode bit constants
+const int INSIDE = 0; // 0000
+const int LEFT   = 1; // 0001
+const int RIGHT  = 2; // 0010
+const int BOTTOM = 4; // 0100
+const int TOP    = 8; // 1000
+
+struct Line {
+    double x0, y0, x1, y1;
+    Line(double a, double b, double c, double d) : x0(a), y0(b), x1(c), y1(d) {}
+};
+
+// Some sample lines to demonstrate clipping
+std::vector<Line> lines = {
+    Line(50,  50,  350, 300), // crosses rectangle
+    Line(120, 120, 280, 220), // fully inside (should stay unchanged)
+    Line(50,  200, 90,  260), // outside and to left
+    Line(200, 50,  200, 300), // vertical through rectangle
+    Line(310, 110, 360, 240), // partly outside on right
+    Line(150, 260, 250, 360), // above rectangle
+    Line(250, 150, 400, 150)  // crosses right edge horizontally
+};
+
+// Compute outcode for a point (x, y) relative to clip rectangle
+int computeOutCode(double x, double y) {
+    int code = INSIDE;
+    if (x < xmin)       code |= LEFT;
+    else if (x > xmax)  code |= RIGHT;
+    if (y < ymin)       code |= BOTTOM;
+    else if (y > ymax)  code |= TOP;
+    return code;
+}
+
+// Cohen-Sutherland clipping algorithm clips a line from
+// P0 = (x0, y0) to P1 = (x1, y1) against a rectangle.
+// Returns true if a portion is inside and modifies x0,y0,x1,y1 to clipped coords.
+bool cohenSutherlandClip(double &x0, double &y0, double &x1, double &y1) {
+    int outcode0 = computeOutCode(x0, y0);
+    int outcode1 = computeOutCode(x1, y1);
+    bool accept = false;
+
+    while (true) {
+        if ((outcode0 | outcode1) == 0) {
+            // Bitwise OR is 0. Both points inside: trivially accept
+            accept = true;
+            break;
+        } else if (outcode0 & outcode1) {
+            // Bitwise AND is not 0 => both points share an outside zone: trivial reject
+            break;
+        } else {
+            // At least one endpoint is outside the clip rectangle; pick it.
+            int outcodeOut = outcode0 ? outcode0 : outcode1;
+            double x, y;
+
+            // Now find intersection point;
+            // using formulas:
+            //   slope = (y1 - y0) / (x1 - x0)
+            // and check against which boundary the point is outside.
+            double dx = x1 - x0;
+            double dy = y1 - y0;
+
+            if (outcodeOut & TOP) {           // point is above the clip rectangle
+                x = x0 + dx * (ymax - y0) / dy;
+                y = ymax;
+            } else if (outcodeOut & BOTTOM) { // point is below the clip rectangle
+                x = x0 + dx * (ymin - y0) / dy;
+                y = ymin;
+            } else if (outcodeOut & RIGHT) {  // point is to the right of clip rectangle
+                y = y0 + dy * (xmax - x0) / dx;
+                x = xmax;
+            } else {                          // point is to the left of clip rectangle
+                y = y0 + dy * (xmin - x0) / dx;
+                x = xmin;
+            }
+
+            // Replace the outside point with intersection point
+            if (outcodeOut == outcode0) {
+                x0 = x;
+                y0 = y;
+                outcode0 = computeOutCode(x0, y0);
+            } else {
+                x1 = x;
+                y1 = y;
+                outcode1 = computeOutCode(x1, y1);
+            }
+        }
+    }
+    return accept;
+}
+
+// Draw text on screen at raster position
+void drawText(const char *text, float x, float y) {
+    glRasterPos2f(x, y);
+    for (const char* c = text; *c != '\0'; ++c)
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
+}
+
+// Draw the clipping rectangle
+void drawClipRect() {
+    glLineWidth(2.0f);
+    glColor3f(0.0f, 0.4f, 0.8f); // blue
+    glBegin(GL_LINE_LOOP);
+        glVertex2d(xmin, ymin);
+        glVertex2d(xmax, ymin);
+        glVertex2d(xmax, ymax);
+        glVertex2d(xmin, ymax);
+    glEnd();
+
+    // label
+    glColor3f(0.0f, 0.0f, 0.0f);
+    drawText("Clipping Rect", (xmin + xmax) / 2 - 30, ymax + 10);
+}
+
+// Display callback
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Draw clipping rectangle
+    drawClipRect();
+
+    // Draw original lines in red (thinner)
+    glLineWidth(1.5f);
+    glColor3f(0.8f, 0.2f, 0.2f); // red
+    for (const Line &L : lines) {
+        glBegin(GL_LINES);
+            glVertex2d(L.x0, L.y0);
+            glVertex2d(L.x1, L.y1);
+        glEnd();
+    }
+
+    // Draw clipped lines in green (thicker)
+    glLineWidth(3.0f);
+    glColor3f(0.1f, 0.7f, 0.2f); // green
+    for (const Line &L : lines) {
+        double cx0 = L.x0, cy0 = L.y0, cx1 = L.x1, cy1 = L.y1;
+        bool visible = cohenSutherlandClip(cx0, cy0, cx1, cy1);
+        if (visible) {
+            glBegin(GL_LINES);
+                glVertex2d(cx0, cy0);
+                glVertex2d(cx1, cy1);
+            glEnd();
+        }
+    }
+
+    // Small legend
+    glColor3f(0.0f, 0.0f, 0.0f);
+    drawText("Original lines: red", 10, 10);
+    drawText("Clipped result: green", 10, 25);
+
+    glutSwapBuffers();
+}
+
+// Window reshape callback
+void reshape(int w, int h) {
+    glViewport(0, 0, w, h);
+
+    // Set up orthographic projection matching window pixels
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(0.0, (double)w, 0.0, (double)h);
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+}
+
+// Keyboard callback to exit program
+void keyboard(unsigned char key, int x, int y) {
+    if (key == 27 || key == 'q' || key == 'Q') { // ESC or q to quit
+        exit(0);
+    }
+}
+
+// Main
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+    int winW = 640, winH = 480;
+    glutInitWindowSize(winW, winH);
+    glutInitWindowPosition(200, 100);
+    glutCreateWindow("Cohen-Sutherland Line Clipping - Demo");
+
+    // white background
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+    // Register callbacks
+    glutDisplayFunc(display);
+    glutReshapeFunc(reshape);
+    glutKeyboardFunc(keyboard);
+
+    std::cout << "Cohen-Sutherland demo\n"
+              << "ESC or q to quit\n";
+
+    glutMainLoop();
+    return 0;
+}
+
+

@@ -1,0 +1,83 @@
+#include <GL/glut.h>
+#include <iostream>
+using namespace std;
+
+// User-input triangle
+int x1_, y1_, x2_, y2_, x3_, y3_;
+
+void drawLineGL(int x0, int y0, int x1, int y1) {
+    glBegin(GL_LINES);
+    glVertex2i(x0, y0);
+    glVertex2i(x1, y1);
+    glEnd();
+}
+
+void drawTriangle(int a1, int b1, int a2, int b2, int a3, int b3) {
+    drawLineGL(a1, b1, a2, b2);
+    drawLineGL(a2, b2, a3, b3);
+    drawLineGL(a3, b3, a1, b1);
+}
+
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Draw original triangle (white)
+    glColor3f(1, 1, 1);
+    drawTriangle(x1_, y1_, x2_, y2_, x3_, y3_);
+
+    float sh = 0.6f;   // Shear factor
+
+    // ---------- X-SHEAR ----------
+    int xs1 = x1_ + sh * y1_;
+    int ys1 = y1_;
+
+    int xs2 = x2_ + sh * y2_;
+    int ys2 = y2_;
+
+    int xs3 = x3_ + sh * y3_;
+    int ys3 = y3_;
+
+    glColor3f(0, 1, 0);
+    drawTriangle(xs1, ys1, xs2, ys2, xs3, ys3);
+
+    // ---------- Y-SHEAR ----------
+    int ys1x = x1_;
+    int ys1y = y1_ + sh * x1_;
+
+    int ys2x = x2_;
+    int ys2y = y2_ + sh * x2_;
+
+    int ys3x = x3_;
+    int ys3y = y3_ + sh * x3_;
+
+    glColor3f(1, 0, 0);
+    drawTriangle(ys1x, ys1y, ys2x, ys2y, ys3x, ys3y);
+
+    glFlush();
+}
+
+void init() {
+    glClearColor(0, 0, 0, 1);
+    gluOrtho2D(0, 500, 0, 500);
+}
+
+int main(int argc, char **argv) {
+
+    cout << "Enter x1 y1: ";
+    cin >> x1_ >> y1_;
+
+    cout << "Enter x2 y2: ";
+    cin >> x2_ >> y2_;
+
+    cout << "Enter x3 y3: ";
+    cin >> x3_ >> y3_;
+
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    glutInitWindowSize(500,500);
+    glutCreateWindow("Shearing - User Input");
+
+    init();
+    glutDisplayFunc(display);
+    glutMainLoop();
+}

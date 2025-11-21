@@ -1,0 +1,108 @@
+#include <GL/glut.h>
+#include <iostream>
+#include <cmath>
+using namespace std;
+void drawLineGL(int x0, int y0, int x1, int y1) {
+    glBegin(GL_LINES);
+    glVertex2i(x0, y0);
+    glVertex2i(x1, y1);
+    glEnd();
+}
+void drawTriangle(int x1, int y1, int x2, int y2, int x3, int y3) {
+    drawLineGL(x1, y1, x2, y2);
+    drawLineGL(x2, y2, x3, y3);
+    drawLineGL(x3, y3, x1, y1);
+}
+void translate(int &x, int &y, int tx, int ty) {
+    x += tx;
+    y += ty;
+}
+void scale(int &x, int &y, float sx, float sy, int cx, int cy) {
+    x = cx + (x - cx) * sx;
+    y = cy + (y - cy) * sy;
+}
+void rotate(int &x, int &y, float angleDeg, int cx, int cy) {
+    float angleRad = angleDeg * M_PI / 180.0;
+    int dx = x - cx;
+    int dy = y - cy;
+    x = cx + dx * cos(angleRad) - dy * sin(angleRad);
+    y = cy + dx * sin(angleRad) + dy * cos(angleRad);
+}
+void reflectXY(int &x, int &y, int cx, int cy) {
+    x = cx - (x - cx);
+    y = cy - (y - cy);
+}
+void shear(int &x, int &y, float shx, float shy, int cx, int cy) {
+    int dx = x - cx;
+    int dy = y - cy;
+    int newX = dx + shx * dy;
+    int newY = dy + shy * dx;
+    x = cx + newX;
+    y = cy + newY;
+}
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+    int x1 = 100, y1 = 100;
+    int x2 = 200, y2 = 100;
+    int x3 = 150, y3 = 200;
+    glColor3f(1.0, 1.0, 1.0);
+    drawTriangle(x1, y1, x2, y2, x3, y3);
+    int tx1 = x1, ty1 = y1;
+    int tx2 = x2, ty2 = y2;
+    int tx3 = x3, ty3 = y3;
+    translate(tx1, ty1, 100, 50);
+    translate(tx2, ty2, 100, 50);
+    translate(tx3, ty3, 100, 50);
+    glColor3f(1.0, 0.0, 0.0);
+    drawTriangle(tx1, ty1, tx2, ty2, tx3, ty3);
+    int sx1 = x1, sy1 = y1;
+    int sx2 = x2, sy2 = y2;
+    int sx3 = x3, sy3 = y3;
+    int cx = (x1 + x2 + x3) / 3;
+    int cy = (y1 + y2 + y3) / 3;
+    scale(sx1, sy1, 1.5, 1.5, cx, cy);
+    scale(sx2, sy2, 1.5, 1.5, cx, cy);
+    scale(sx3, sy3, 1.5, 1.5, cx, cy);
+    glColor3f(0.0, 1.0, 0.0);
+    drawTriangle(sx1, sy1, sx2, sy2, sx3, sy3);
+    int rx1 = x1, ry1 = y1;
+    int rx2 = x2, ry2 = y2;
+    int rx3 = x3, ry3 = y3;
+    rotate(rx1, ry1, 45, cx, cy);
+    rotate(rx2, ry2, 45, cx, cy);
+    rotate(rx3, ry3, 45, cx, cy);
+    glColor3f(0.0, 0.0, 1.0);
+    drawTriangle(rx1, ry1, rx2, ry2, rx3, ry3);
+    int fx1 = x1, fy1 = y1;
+    int fx2 = x2, fy2 = y2;
+    int fx3 = x3, fy3 = y3;
+    reflectXY(fx1, fy1, cx, cy);
+    reflectXY(fx2, fy2, cx, cy);
+    reflectXY(fx3, fy3, cx, cy);
+    glColor3f(1.0, 0.0, 1.0);
+    drawTriangle(fx1, fy1, fx2, fy2, fx3, fy3);
+    int sh1 = x1, shy1 = y1;
+    int sh2 = x2, shy2 = y2;
+    int sh3 = x3, shy3 = y3;
+    shear(sh1, shy1, 0.5, 0.0, cx, cy);
+    shear(sh2, shy2, 0.5, 0.0, cx, cy);
+    shear(sh3, shy3, 0.5, 0.0, cx, cy);
+    glColor3f(0.0, 1.0, 1.0);
+    drawTriangle(sh1, shy1, sh2, shy2, sh3, shy3);
+    glFlush();
+}
+void init() {
+    glClearColor(0.0, 0.0, 0.0, 1.0);
+    gluOrtho2D(0, 500, 0, 500);
+}
+int main(int argc, char **argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    glutInitWindowSize(500, 500);
+    glutInitWindowPosition(100, 100);
+    glutCreateWindow("2D Transformations - Moinuddin Ahmed");
+    init();
+    glutDisplayFunc(display);
+    glutMainLoop();
+    return 0;
+}

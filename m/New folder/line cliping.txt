@@ -1,0 +1,178 @@
+#include <GL/glut.h>
+#include <vector>
+#include <iostream>
+using namespace std;
+
+// User-input clipping rectangle
+double xmin, ymin, xmax, ymax;
+
+// Outcode constants
+const int INSIDE = 0;
+const int LEFT   = 1;
+const int RIGHT  = 2;
+const int BOTTOM = 4;
+const int TOP    = 8;
+
+// Line structure
+struct Line {
+    double x0, y0, x1, y1;
+    Line(double a, double b, double c, double d)
+        : x0(a), y0(b), x1(c), y1(d) {}
+};
+
+vector<Line> lines;
+
+// Compute outcode
+int computeOutCode(double x, double y) {
+    int code = INSIDE;
+    if (x < xmin) code |= LEFT;
+    else if (x > xmax) code |= RIGHT;
+    if (y < ymin) code |= BOTTOM;
+    else if (y > ymax) code |= TOP;
+    return code;
+}
+
+// Cohen-Sutherland algorithm
+bool cohenSutherlandClip(double &x0, double &y0, double &x1, double &y1) {
+    int outcode0 = computeOutCode(x0, y0);
+    int outcode1 = computeOutCode(x1, y1);
+    bool accept = false;
+
+    while (true) {
+        if (!(outcode0 | outcode1)) { // both inside
+            accept = true;
+            break;
+        }
+        else if (outcode0 & outcode1) { // share outside zone
+            break;
+        }
+        else {
+            int out = outcode0 ? outcode0 : outcode1;
+            double x, y;
+            double dx = x1 - x0;
+            double dy = y1 - y0;
+
+            if (out & TOP) {
+                x = x0 + dx * (ymax - y0) / dy;
+                y = ymax;
+            }
+            else if (out & BOTTOM) {
+                x = x0 + dx * (ymin - y0) / dy;
+                y = ymin;
+            }
+            else if (out & RIGHT) {
+                y = y0 + dy * (xmax - x0) / dx;
+                x = xmax;
+            }
+            else {
+                y = y0 + dy * (xmin - x0) / dx;
+                x = xmin;
+            }
+
+            if (out == outcode0) {
+                x0 = x; y0 = y;
+                outcode0 = computeOutCode(x0, y0);
+            } else {
+                x1 = x; y1 = y;
+                outcode1 = computeOutCode(x1, y1);
+            }
+        }
+    }
+    return accept;
+}
+
+void drawText(const char *text, float x, float y) {
+    glRasterPos2f(x, y);
+    while (*text)
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *text++);
+}
+
+void drawClipRect() {
+    glColor3f(0, 0, 1);
+    glLineWidth(2);
+    glBegin(GL_LINE_LOOP);
+        glVertex2d(xmin, ymin);
+        glVertex2d(xmax, ymin);
+        glVertex2d(xmax, ymax);
+        glVertex2d(xmin, ymax);
+    glEnd();
+}
+
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Draw clipping rectangle
+    drawClipRect();
+
+    // Draw original lines (red)
+    glColor3f(1, 0, 0);
+    glLineWidth(1.5);
+    for (auto &L : lines) {
+        glBegin(GL_LINES);
+            glVertex2d(L.x0, L.y0);
+            glVertex2d(L.x1, L.y1);
+        glEnd();
+    }
+
+    // Draw clipped lines (green)
+    glColor3f(0, 0.7, 0);
+    glLineWidth(3.0);
+    for (auto &L : lines) {
+        double cx0 = L.x0, cy0 = L.y0, cx1 = L.x1, cy1 = L.y1;
+        if (cohenSutherlandClip(cx0, cy0, cx1, cy1)) {
+            glBegin(GL_LINES);
+                glVertex2d(cx0, cy0);
+                glVertex2d(cx1, cy1);
+            glEnd();
+        }
+    }
+
+    glutSwapBuffers();
+}
+
+void reshape(int w, int h) {
+    glViewport(0, 0, w, h);
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(0, w, 0, h);
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+}
+
+void keyboard(unsigned char key, int, int) {
+    if (key == 27 || key == 'q') exit(0);
+}
+
+int main(int argc, char **argv) {
+
+    // 🎯 USER INPUT SECTION
+    cout << "Enter clipping rectangle (xmin ymin xmax ymax): ";
+    cin >> xmin >> ymin >> xmax >> ymax;
+
+    int n;
+    cout << "Enter number of lines: ";
+    cin >> n;
+
+    for (int i = 0; i < n; i++) {
+        double x0, y0, x1, y1;
+        cout << "Line " << i+1 << " (x0 y0 x1 y1): ";
+        cin >> x0 >> y0 >> x1 >> y1;
+        lines.emplace_back(x0, y0, x1, y1);
+    }
+
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+    glutInitWindowSize(700, 500);
+    glutCreateWindow("Cohen-Sutherland - User Input Mode");
+
+    glClearColor(1,1,1,1);
+
+    glutDisplayFunc(display);
+    glutReshapeFunc(reshape);
+    glutKeyboardFunc(keyboard);
+
+    glutMainLoop();
+    return 0;
+}
